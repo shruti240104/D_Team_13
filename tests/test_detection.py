@@ -1,4 +1,4 @@
-"""Member 1: corner ordering, detection success/failure, coordinate scaling."""
+
 import numpy as np
 import pytest
 
@@ -43,7 +43,7 @@ def test_polygon_area_and_iou():
     assert quad_iou(SQUARE, SQUARE + np.array([50, 0], np.float32)) == pytest.approx(1 / 3, abs=1e-3)
 
 
-# ---- successful detection on synthetic photos -------------------------------
+# ---- detection on synthetic photos -------------------------------
 def test_detects_clean_page_with_high_overlap():
     s = photo("dark", 0, 0)
     det = _detect(s)
@@ -66,7 +66,7 @@ def test_detects_page_on_cluttered_background():
 def test_corners_are_in_original_coordinates_after_scaling():
     s = photo("dark", 5, 0.3)   # 1200x900 photo, working copy is 800 wide -> scale 1.5
     det = _detect(s)
-    assert det.corners[:, 0].max() > 800   # impossible if still in working coordinates
+    assert det.corners[:, 0].max() > 800   
     assert np.linalg.norm(det.corners - s.corners, axis=1).max() < 25
 
 
@@ -76,7 +76,7 @@ def test_result_carries_debug_images_and_method():
     assert 0.0 <= det.quality <= 1.0
 
 
-# ---- failures must be graceful ------------------------------------------------
+
 def test_no_document_returns_clear_failure():
     rng = np.random.default_rng(0)
     img = np.clip(rng.normal(120, 10, (600, 800, 3)), 0, 255).astype(np.uint8)  # plain noisy surface
