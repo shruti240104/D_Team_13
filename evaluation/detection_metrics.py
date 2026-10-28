@@ -1,16 +1,4 @@
-"""Document-detection evaluation  (Member 1).
 
-Measures, on a folder of images WITH corner annotations (see dataset.py):
-  * success rate     fraction of images where IoU(pred, truth) >= --iou-threshold
-  * corner error     mean distance between matching corners / image diagonal
-  * IoU              overlap of predicted and true quadrilaterals
-  * failures         images where detection reported failure
-
-The IoU threshold (default 0.90) is a team decision; state it in your report.
-No numbers are built in: run it on your own data.
-
-    python -m evaluation.detection_metrics sample_data/synthetic --csv detection.csv
-"""
 from __future__ import annotations
 
 import argparse
