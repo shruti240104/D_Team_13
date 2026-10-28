@@ -1,4 +1,4 @@
-"""Tests for the text-aware crop protection (backend/text_region.py)."""
+
 import json
 from pathlib import Path
 
@@ -88,7 +88,7 @@ def test_text_box_when_no_outline_is_around_the_text_only():
 
 
 def test_text_all_over_gives_full_photo():
-    img = np.full((600, 800, 3), 245, np.uint8)              # the page fills the photo
+    img = np.full((600, 800, 3), 245, np.uint8)              
     for y in range(40, 580, 34):
         for x in (20, 400):
             cv2.putText(img, "The quick brown fox", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (20, 20, 20), 2, cv2.LINE_AA)
