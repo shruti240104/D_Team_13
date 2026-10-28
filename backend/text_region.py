@@ -1,29 +1,4 @@
-"""Text-aware crop protection.
 
-Problem this solves
--------------------
-The page detector looks for a bright four-sided region.  On some photos it locks
-onto something *smaller* than the page (a table, a box, a folded part, a shadow
-edge) and the crop then cuts text off.  When detection fails altogether the
-pipeline used to fall back to the whole photo, which is also not ideal.
-
-The rule implemented here is simple: **never crop away text.**
-
-  1. ``find_text_blocks``      finds where the text is (no OCR, pure image
-                               processing: dark marks on a locally lighter
-                               background, grouped into lines/blocks).
-  2. ``expand_quad_to_text``   takes the detected page outline and pushes its
-                               sides outwards, only as far as needed, until
-                               every nearby text block is inside.  The outline
-                               keeps its own tilt/perspective.
-  3. ``text_region_quad``      when no page outline was found, returns a box
-                               around all the text.  If the text is spread over
-                               (almost) the whole photo that box is the full
-                               photo - "text all over the page = full page".
-
-All work happens on the down-scaled working copy; the returned corners are
-multiplied by ``scale`` so they refer to the ORIGINAL image.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,9 +30,8 @@ class TextBlock:
     n_components: int
 
 
-# =============================================================================
+
 # 1. Where is the text?
-# =============================================================================
 def _ink_mask(gray: np.ndarray) -> np.ndarray:
     """Dark-on-lighter marks.  The local background is estimated with a large
     median filter (strokes are thin, so the median is the paper colour)."""
@@ -136,9 +110,8 @@ def find_text_blocks(working_bgr: np.ndarray) -> List[TextBlock]:
     return blocks
 
 
-# =============================================================================
+
 # 2. Grow the detected outline until it holds the text
-# =============================================================================
 def _outward_normals(quad: np.ndarray) -> np.ndarray:
     """Unit outward normal of each side of a clockwise (on screen) TL,TR,BR,BL quad."""
     normals = []
@@ -180,12 +153,6 @@ def _push_sides(quad: np.ndarray, normals: np.ndarray, offsets: np.ndarray) -> n
 
 def expand_quad_to_text(quad_working: np.ndarray, blocks: List[TextBlock],
                         image_shape: Tuple[int, ...]) -> Tuple[np.ndarray, int]:
-    """Return ``(new_quad, n_blocks_added)`` in working coordinates.
-
-    Text blocks that already sit inside the outline are left alone.  A block
-    that sticks out of it (or lies just outside it) pulls the outline's sides
-    outwards - only the sides that need it, only as far as needed.
-    """
     h, w = image_shape[:2]
     side = max(h, w)
     prox = PROXIMITY_FRACTION * side
@@ -218,9 +185,8 @@ def expand_quad_to_text(quad_working: np.ndarray, blocks: List[TextBlock],
     return quad, len(included)
 
 
-# =============================================================================
+
 # 3. No outline found: box around the text
-# =============================================================================
 def text_region_quad(blocks: List[TextBlock], image_shape: Tuple[int, ...]) -> Optional[np.ndarray]:
     """Box around all text blocks (working coordinates), or ``None`` if no text.
 
