@@ -1,12 +1,4 @@
-"""Click-to-annotate tool for real photos  (Member 1).
 
-Opens each image without a .json file; click the four page corners (any order),
-press ENTER to save, R to redo, S to skip, ESC to quit.  Saves ``<image>.json``
-with corners in ORIGINAL pixel coordinates, ordered TL,TR,BR,BL.
-Requires the normal ``opencv-python`` package (a GUI window), not the headless build.
-
-    python -m evaluation.annotate_corners path/to/photos
-"""
 from __future__ import annotations
 
 import json
