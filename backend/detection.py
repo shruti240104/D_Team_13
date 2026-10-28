@@ -1,64 +1,4 @@
-"""Document boundary and corner detection  (Member 1 - Detection Engineer).
 
-Goal
-----
-Given a photo, find the four corners of the paper page.
-
-Big picture
------------
-A page is (usually) a bright, four-sided, roughly rectangular region.  We look
-for that region with several *strategies* (each turns the photo into a binary
-mask / edge map), extract closed outlines (*contours*) from each mask, reduce
-each outline to a 4-point polygon, score every polygon, and keep the best one.
-
-Strategies (tried in this order; all are run and compared)
-  1. ``canny``           Canny edges (thresholds derived from Otsu) + closing.
-  2. ``canny_sensitive`` Canny on a contrast-equalised image with low thresholds
-                         (helps when the page edge is faint).
-  3. ``otsu_threshold``  Otsu threshold: paper is usually brighter than the desk.
-  4. ``hsv_paper``       "Low saturation AND bright" mask: paper is nearly
-                         colourless, many desks/tables are coloured.
-
-Why the working image is down-scaled
-------------------------------------
-Detection runs on a copy whose longest side is ~800 px (see
-``input_handler.make_working_copy``).  Paper grain, JPEG noise and printed text
-create thousands of tiny edges at full resolution; at 800 px only the large
-structures (the page outline) survive, and the algorithm is much faster.
-The corners are multiplied by the scale factor at the end so they refer to the
-ORIGINAL image.
-
-Why not just "take the largest contour"?
-----------------------------------------
-On a cluttered desk the largest contour may be the table, a monitor, or the
-frame around the whole picture.  Every candidate is therefore checked:
-convex hull -> approximate to 4 points -> area range -> interior angles ->
-how well the 4-gon matches the contour -> are there real image edges along its
-sides?  Only the best-scoring candidate wins, and weak or ambiguous winners are
-reported honestly.
-
-Quality score (heuristic, NOT a probability)
---------------------------------------------
-    quality = 0.30*fill + 0.20*angle_score + 0.20*size_score + 0.30*edge_support
-  fill         area(contour hull) / area(quad), folded so it is <= 1
-  angle_score  1 when all interior angles are 90 degrees, 0 when one deviates by >= 35 degrees
-  size_score   min(1, page_area / (0.4 * image_area))   (tiny regions are suspicious)
-  edge_support fraction of points sampled along the four sides that lie on a
-               Canny edge pixel (a real page border has an edge under it)
-The weights are a design decision made by the team; tune them on your own
-dataset with ``evaluation/detection_metrics.py``.
-
-Known limitations
------------------
-* White paper on a white/light table: no strategy sees the border -> failure.
-* A page that fills almost the whole frame (area >= ``MAX_AREA_RATIO`` or three
-  or more corners on the image border) is rejected because it is
-  indistinguishable from the picture border / a textured table.  Retake the
-  photo with a small margin, or place the corners manually.
-* Curled / folded pages are not four-sided; the min-area-rectangle fallback
-  returns an approximation.
-* Only one document is returned (multi-document detection is postponed).
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -84,21 +24,10 @@ BORDER_MARGIN_FRACTION = 0.01   # a corner this close to the image edge "touches
 MAX_BORDER_CORNERS = 2    # >= 3 corners on the border = it is the picture frame, not a page
 
 
-# =============================================================================
+
 # Geometry helpers
-# =============================================================================
 def order_corners(points: Sequence[Sequence[float]]) -> np.ndarray:
-    """Return 4 points as top-left, top-right, bottom-right, bottom-left.
-
-    Method: sort the points by their angle around the centroid (this walks
-    around the quadrilateral clockwise on screen, so the result is never
-    "twisted"), then rotate the list so it starts at the point with the
-    smallest x+y, which is the top-left for an upright page.
-
-    The popular alternative (TL = min x+y, BR = max x+y, TR = min y-x,
-    BL = max y-x) fails for pages rotated close to 45 degrees where two points
-    tie; the angle method does not.
-    """
+   
     pts = np.asarray(points, dtype=np.float32).reshape(-1, 2)
     if pts.shape != (4, 2):
         raise ScannerError(STAGE_DETECTION, "bad_corners", "Exactly four corner points are required.")
@@ -154,9 +83,8 @@ def draw_corners(image: np.ndarray, corners: Optional[np.ndarray], color=(0, 200
     return out
 
 
-# =============================================================================
+
 # Candidate scoring
-# =============================================================================
 @dataclass
 class _Candidate:
     quad: np.ndarray          # ordered TL,TR,BR,BL in WORKING-image coordinates
@@ -335,19 +263,7 @@ def _edge_support(quad: np.ndarray, edge_map: np.ndarray) -> float:
 
 def _evaluate_contour(contour: np.ndarray, image_area: float, edge_map: np.ndarray,
                       method: str) -> Optional[_Candidate]:
-    """Turn one contour into a scored 4-corner candidate, or None if implausible.
-
-    1. Convex hull: a page is convex; the hull ignores dents caused by
-       shadows, fingers or text touching the border.
-    2. ``approxPolyDP`` (Douglas-Peucker) simplifies the hull.  We try
-       increasing tolerances until exactly 4 points remain.  A *contour* has
-       hundreds of points; a page is a quadrilateral, so a 4-point
-       approximation is the shape model we look for.  The result must still be
-       checked (angles, area, fill) because ANY shape can be approximated by 4
-       points.
-    3. If no tolerance yields 4 points (rounded/curled corners) fall back to the
-       minimum-area rectangle, but only if the hull nearly fills it.
-    """
+   
     hull = cv2.convexHull(contour)
     hull_area = float(cv2.contourArea(hull))
     ratio = hull_area / image_area
@@ -389,10 +305,7 @@ def _evaluate_contour(contour: np.ndarray, image_area: float, edge_map: np.ndarr
     if fill < MIN_FILL:
         return None
 
-    # Frame rejection.  A textured table or the picture border itself can form a
-    # large, very rectangular "candidate" with strong edge support.  A real page
-    # photographed with a margin has at most two corners (a cropped page) on the
-    # image border; three or four mean we found the frame, not the page.
+    
     img_h, img_w = edge_map.shape[:2]
     mx, my = BORDER_MARGIN_FRACTION * img_w, BORDER_MARGIN_FRACTION * img_h
     on_border = int(np.sum((quad[:, 0] <= mx) | (quad[:, 0] >= img_w - 1 - mx)
@@ -431,9 +344,8 @@ def _candidates_from_mask(mask: np.ndarray, retrieval: int, image_area: float,
     return out
 
 
-# =============================================================================
+
 # Strategies: each returns (mask_or_edges, contour_retrieval_mode)
-# =============================================================================
 def _close(mask: np.ndarray, size: int, iterations: int = 1) -> np.ndarray:
     """Morphological closing = dilate then erode: fills small gaps and holes.
 
@@ -486,28 +398,14 @@ STRATEGIES: List[Tuple[str, Callable]] = [
 _COLORS = [(255, 128, 0), (0, 200, 255), (255, 0, 200), (200, 200, 0)]
 
 
-# =============================================================================
+
 # Public API
-# =============================================================================
 def detect_document(
     working_bgr: np.ndarray,
     scale: Tuple[float, float] = (1.0, 1.0),
     original_size: Optional[Tuple[int, int]] = None,
 ) -> DetectionResult:
-    """Find the document in ``working_bgr`` (a down-scaled BGR copy).
-
-    Parameters
-    ----------
-    working_bgr   BGR uint8 working copy (longest side ~800 px).
-    scale         (scale_x, scale_y) = original size / working size; corners are
-                  multiplied by it so the result is in ORIGINAL-image pixels.
-    original_size (width, height) of the original; corners are clipped into it.
-
-    Returns a ``DetectionResult``.  Expected failures (no page, weak page) are
-    returned with ``success=False`` plus a ``failure_code``/``failure_reason``;
-    only programming errors (wrong array type) raise ``ScannerError``.
-    ``debug`` always holds images for troubleshooting (edges, masks, candidates).
-    """
+   
     if (not isinstance(working_bgr, np.ndarray) or working_bgr.ndim != 3
             or working_bgr.shape[2] != 3 or working_bgr.dtype != np.uint8):
         raise ScannerError(STAGE_DETECTION, "bad_input", "Detection needs a BGR uint8 image (H, W, 3).")
