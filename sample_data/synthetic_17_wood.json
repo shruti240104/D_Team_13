@@ -1,0 +1,22 @@
+{
+  "corners": [
+    [
+      343.7900085449219,
+      101.80999755859375
+    ],
+    [
+      826.6900024414062,
+      77.62000274658203
+    ],
+    [
+      858.780029296875,
+      778.8200073242188
+    ],
+    [
+      372.7099914550781,
+      821.5
+    ]
+  ],
+  "text": "DOCUMENT SCANNER TEST PAGE\nThe quick brown fox jumps over the lazy dog.\nComputer vision turns photographs into scans.\nInvoice number 20481 dated 12 March 2025.\nTotal amount due is 1250 dollars.\nPerspective correction makes the page flat.\nAdaptive thresholding handles uneven light.\nTesseract reads the cleaned image.\nStudent project report section one.\nAll measurements were taken on site.",
+  "synthetic": true
+}
